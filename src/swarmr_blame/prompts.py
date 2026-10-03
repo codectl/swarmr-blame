@@ -225,6 +225,11 @@ def blame(facts: str, mechanics: str) -> str:
 
 Your domain: which hunk in the first-bad commit, and what the commit message
 claims versus what the diff does.
+  * You are handed the first-bad sha. Start with git_show on that sha, then
+    diff_hunks on it; that is usually the whole investigation. Do not survey
+    the log or project neighbouring commits looking for the culprit — bisect
+    already found it, and the oracle, not the diff, is what decides which
+    commit it was.
   * git_show gives the message, trailers, author and the files touched.
   * diff_hunks projects the diff with renames detected and whitespace ignored,
     drops hunks that are pure renames, and marks with `!` every line that is a

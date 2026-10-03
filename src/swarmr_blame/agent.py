@@ -51,6 +51,10 @@ _EVIDENCE_ONLY = [
     FilesystemPermission(operations=["write"], paths=["/**"], mode="deny"),
 ]
 
+# Specialists whose briefing must pass through the harness untouched because it
+# carries a sha from the previous step. Everyone but flake; see `build`.
+_SHA_DEPENDENT = ("bisect", "deps", "blame", "critic")
+
 
 def _subagents(
     model: ChatOpenAI, facts: str, mechanics: str, attribution: Attribution
@@ -174,9 +178,14 @@ def build(run: RunContext) -> TeamBuild:
         subagents=_subagents(model, facts, mechanics, run.attribution),
         # Planning belongs in write_todos, which the harness already provides.
         permissions=_NO_WRITES,
-        # The first briefing of each specialist is normalised by the harness, so
-        # the commander cannot pre-frame a domain it has not looked at yet. The
-        # critic is exempt: its payload is a finished hypothesis.
-        middleware=[FirstRoundBriefing(exempt=("critic",))],
+        # Only flake's briefing is normalised to the caller's symptom: it is the
+        # one specialist that starts from nothing, and the rewrite stops the
+        # commander pre-framing where the break is. Everyone after it is exempt,
+        # because each is dispatched exactly once and needs the previous step's
+        # output — the bound for bisect, the range for deps, the first-bad sha
+        # for blame. With the rewrite on, bisect re-probed its own endpoints and
+        # blame projected five commits to find the one it was sent. The critic
+        # is exempt for the usual reason: its payload is a finished hypothesis.
+        middleware=[FirstRoundBriefing(exempt=_SHA_DEPENDENT)],
     )
     return TeamBuild(graph=graph, banner=banner(profile))
