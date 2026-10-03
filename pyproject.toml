@@ -1,6 +1,6 @@
 [project]
 name = "swarmr-blame"
-version = "0.1.0"
+version = "1.0.0"
 description = "Git archaeology team for swarmr: which commit broke the test, and proof."
 readme = "README.md"
 requires-python = ">=3.13"
