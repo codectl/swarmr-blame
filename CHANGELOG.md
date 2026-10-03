@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/codectl/swarmr-blame/compare/v1.0.0...v1.0.1) (2026-10-03)
+
+
+### Bug Fixes
+
+* require swarmr 1.3 for param support ([#3](https://github.com/codectl/swarmr-blame/issues/3)) ([bec44ee](https://github.com/codectl/swarmr-blame/commit/bec44ee1c9e2b05a00ee388923408a0b72c0107c))
+
 ## 1.0.0 (2026-10-03)
 
 
