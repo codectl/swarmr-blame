@@ -16,7 +16,7 @@ from swarmr.teams import get
 from swarmr.teams import names as registered_names
 
 from swarmr_blame import TEAM
-from swarmr_blame.agent import _EVIDENCE_ONLY, _NO_WRITES
+from swarmr_blame.agent import _EVIDENCE_ONLY, _NO_WRITES, _SHA_DEPENDENT
 from swarmr_blame.digest import digest_result
 from swarmr_blame.tools import (
     BISECT_TOOLS,
@@ -68,6 +68,15 @@ class TestToolSets:
             for tool in tools
         }
         assert {tool.name for tool in CRITIC_TOOLS} == every
+
+    def test_only_flake_starts_from_the_symptom_alone(self) -> None:
+        """Every other specialist is dispatched once and needs the previous
+        step's sha, so the harness must not rewrite its briefing. With bisect
+        rewritten, it re-probed its own endpoints; with blame rewritten, it
+        projected five commits to find the one it was sent."""
+        roster = {member.name for member in TEAM.members} - {TEAM.orchestrator}
+        assert set(_SHA_DEPENDENT) == roster - {"flake"}
+        assert set(TEAM.audit_agents) <= set(_SHA_DEPENDENT)
 
     def test_no_tool_can_mutate_the_checkout(self) -> None:
         names = {tool.name for tool in CRITIC_TOOLS}

@@ -148,7 +148,7 @@ Unlike the Kubernetes team, round one is **one** investigator: nothing else can 
 
 Shared `INVESTIGATOR_CONTRACT`: scratch worktrees, never the checkout; `grep`/`glob`/`ls` operate on the agent's own scratch filesystem, not the repository — use `git_show`/`diff_hunks`; about 8 calls; counts verbatim; `absent` is neither pass nor fail; `VERDICT / EVIDENCE / INFERENCE`, ≤12 lines.
 
-**The commander is prohibited from enumerating what to check.** Its dispatches are one sentence naming the symptom, never a test id and never a checklist; `swarmr`'s `FirstRoundBriefing` enforces this for the first dispatch. `SWEEP_REQUEST`, the default when the caller gives no symptom, is "the configured test fails at HEAD".
+**The commander is prohibited from enumerating what to check.** Its dispatches are one sentence: the symptom plus the shas the step needs, never a test id and never a checklist. `swarmr`'s `FirstRoundBriefing` enforces symptom-only on `flake` alone (`agent._SHA_DEPENDENT` exempts the rest): unlike the Kubernetes team, every specialist after flake is dispatched exactly once and needs the previous step's output — the bound, the range, the first-bad sha. With the rewrite on, a live run saw bisect re-probe its own endpoints and blame project five commits to find the one it was sent. `test_contract.py` pins the exemption to the roster. `SWEEP_REQUEST`, the default when the caller gives no symptom, is "the configured test fails at HEAD".
 
 **The critic receives the hypothesis alone** and must rerun the oracle at the sha and its parent before anything else; an environmental claim must name a difference that survives interleaving.
 
@@ -213,7 +213,7 @@ CI (`.github/workflows/ci.yml`) uses `uv`, installs `swarmr` from git `@main` **
 
 ## Dependencies
 
-- `swarmr>=1.0,<2` — capped to a minor because `Team`, `Member`, `Param`, `RunContext`, `TeamBuild`, `Lazy`, `TeamError`, `core.middleware` and the `swarmr.teams` group are an ABI this package implements. From it: `build_model` (never a model constructed here), `AnnounceName`, `FirstRoundBriefing`, `Attribution`, `clip`.
+- `swarmr>=1.3,<2` — capped to a minor because `Team`, `Member`, `Param`, `RunContext`, `TeamBuild`, `Lazy`, `TeamError`, `core.middleware` and the `swarmr.teams` group are an ABI this package implements; `1.3` is where `Param` and `profile(run)` arrived. From it: `build_model` (never a model constructed here), `AnnounceName`, `FirstRoundBriefing`, `Attribution`, `clip`.
 - `deepagents` / `langchain-core` — reached transitively for `create_deep_agent`, `SubAgent`, `FilesystemPermission` and the `@tool` decorator.
 - `git` on PATH — every repository read and every worktree; no Python git binding.
 - Standard library only otherwise: `shlex`, `subprocess`, `contextvars`, `tomllib`, `hashlib`.
