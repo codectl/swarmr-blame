@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/codectl/swarmr-blame/compare/v1.0.1...v1.0.2) (2026-10-03)
+
+
+### Bug Fixes
+
+* pass flake's bound and the first bad sha through to bisect, deps and blame ([#5](https://github.com/codectl/swarmr-blame/issues/5)) ([9a794d1](https://github.com/codectl/swarmr-blame/commit/9a794d1360b041b51ad6e439779be4158208f579))
+
 ## [1.0.1](https://github.com/codectl/swarmr-blame/compare/v1.0.0...v1.0.1) (2026-10-03)
 
 
