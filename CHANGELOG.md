@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/codectl/swarmr-blame/compare/v1.0.2...v1.0.3) (2026-10-04)
+
+
+### Bug Fixes
+
+* key the tool cache by repository, stop misdetecting test expressions as paths, hash only tracked lockfiles, pin ([#7](https://github.com/codectl/swarmr-blame/issues/7)) ([d151c5c](https://github.com/codectl/swarmr-blame/commit/d151c5cf51688d17dafd60e0d6b4816aeb706007))
+
 ## [1.0.2](https://github.com/codectl/swarmr-blame/compare/v1.0.1...v1.0.2) (2026-10-03)
 
 
