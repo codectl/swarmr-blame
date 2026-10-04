@@ -129,7 +129,7 @@ def bisect_range(
     worktree: Worktree,
     good: str,
     bad: str,
-    timeout: int = oracle.ORACLE_TIMEOUT,
+    timeout: int | None = None,
 ) -> BisectResult:
     """Find the first commit in `good..bad` at which the test fails."""
     good_out = oracle.run(worktree, good, timeout)

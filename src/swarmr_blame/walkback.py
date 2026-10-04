@@ -110,7 +110,7 @@ def _added_in(head: str, path: str) -> str | None:
     return out.split()[0] if out.split() else None
 
 
-def probe(worktree: Worktree, timeout: int = oracle.ORACLE_TIMEOUT) -> WalkResult:
+def probe(worktree: Worktree, timeout: int | None = None) -> WalkResult:
     """Find a commit at which the test passes, probing back from the target's HEAD.
 
     Refs are resolved against the target checkout's HEAD, not the worktree's:
@@ -157,7 +157,7 @@ def _from_birth(
     head_sha: str,
     head: Probe,
     tried: list[Probe],
-    timeout: int,
+    timeout: int | None,
 ) -> WalkResult:
     """The test is absent at the last probe: try the commit that added its file.
 

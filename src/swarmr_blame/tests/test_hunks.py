@@ -174,3 +174,14 @@ def test_tool_diffs_a_commit_against_its_parent(
 
     root = json.loads(diff_hunks.invoke({"rev": "HEAD^", "scope": "all"}))
     assert sorted(h["path"] for h in root["kept"]) == ["a.py", "uv.lock"]
+
+
+def test_non_ascii_paths_survive_the_path_filter(repo_factory) -> None:
+    """git C-quotes non-ASCII paths unless core.quotepath is off; a quoted
+    `--- "a/caf\\303\\251.py"` never matched the path the model asked for."""
+    from swarmr_blame.hunks import kept_hunks
+
+    repo_factory([("base", {"café.py": "x = 1\n"}), ("change", {"café.py": "x = 2\n"})])
+    payload = json.loads(diff_hunks.invoke({"rev": "HEAD", "path": "café.py"}))
+    assert [h["path"] for h in payload["kept"]] == ["café.py"]
+    assert [h["path"] for h in kept_hunks("HEAD", "café.py")] == ["café.py"]

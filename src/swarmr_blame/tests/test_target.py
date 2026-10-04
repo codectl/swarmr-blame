@@ -34,6 +34,8 @@ def test_activate_validates_the_checkout_and_parses_the_commands(
         activate({"repo": str(path / "sub"), "test": "x"})
     with pytest.raises(TeamError, match="`test` is empty"):
         activate({"repo": str(path), "test": ""})
+    with pytest.raises(TeamError, match="`repo` is empty"):
+        activate({"repo": "  ", "test": "x"})
 
 
 def test_tools_outside_a_run_fail_with_a_sentence() -> None:
@@ -112,3 +114,40 @@ def test_the_target_survives_a_thread_that_copies_context(
     thread.start()
     thread.join()
     assert seen == [a.resolve()]
+
+
+def test_cached_reads_are_keyed_by_repository(
+    repo_factory: RepoFactory, tmp_path: Path
+) -> None:
+    """Two runs in one server asking `git_log("HEAD")` must not share an answer."""
+    from swarmr_blame.history import git_log
+
+    a = repo_factory([("only in a", {"f": "1\n"})])
+    b = tmp_path / "b"
+    b.mkdir()
+    import subprocess
+
+    subprocess.run(["git", "init", "-q", "-b", "main", str(b)], check=True)
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(b),
+            "-c",
+            "user.name=x",
+            "-c",
+            "user.email=x@x",
+            "commit",
+            "-q",
+            "--allow-empty",
+            "-m",
+            "only in b",
+        ],
+        check=True,
+    )
+    from_a = git_log.invoke({"rev_range": "HEAD", "limit": 5})
+    point(b, test="true")
+    from_b = git_log.invoke({"rev_range": "HEAD", "limit": 5})
+    point(a)
+    assert "only in a" in from_a and "only in b" not in from_a
+    assert "only in b" in from_b and "only in a" not in from_b

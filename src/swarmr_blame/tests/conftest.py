@@ -85,6 +85,6 @@ def repo_factory(tmp_path: Path) -> Iterator[RepoFactory]:
 
 @pytest.fixture(autouse=True)
 def _fresh_cache(monkeypatch: pytest.MonkeyPatch) -> None:
-    """`cached` keys on function name and arguments, and every test repository
-    has the same shape of arguments, so a result would leak between tests."""
+    """`cached` keys on repository, function name and arguments; a run's own
+    reads must not outlive the test that made them."""
     monkeypatch.setattr(output, "_cache", {})

@@ -61,10 +61,21 @@ def git(
 ) -> str:
     """Run git with typed arguments and return stdout.
 
-    No shell: `args` is passed as an argv list. Colour, pager and locale are
-    pinned so output is parseable regardless of the operator's git config.
+    No shell: `args` is passed as an argv list. Colour, pager, locale and path
+    quoting are pinned so output is parseable regardless of the operator's git
+    config: with `core.quotepath` on, a non-ASCII path arrives C-quoted on the
+    `---`/`+++` lines and never matches the path the model asked about.
     """
-    argv = ["git", "-c", "color.ui=never", "-c", "core.pager=cat", *args]
+    argv = [
+        "git",
+        "-c",
+        "color.ui=never",
+        "-c",
+        "core.pager=cat",
+        "-c",
+        "core.quotepath=false",
+        *args,
+    ]
     env = {**os.environ, "LC_ALL": "C", "GIT_TERMINAL_PROMPT": "0"}
     done = subprocess.run(
         argv,

@@ -34,9 +34,17 @@ from typing import Literal
 from swarmr_blame.sandbox import SetupError, Worktree, scrubbed_env
 from swarmr_blame.target import current
 
-__all__ = ["ORACLE_TIMEOUT", "Outcome", "Status", "run"]
+__all__ = ["Outcome", "Status", "oracle_timeout", "run"]
 
-ORACLE_TIMEOUT = int(os.environ.get("BLAME_ORACLE_TIMEOUT", "120"))
+
+def oracle_timeout() -> int:
+    """Seconds one test run may take; BLAME_ORACLE_TIMEOUT, default 120.
+
+    Read per call, not at import, so a long-lived server honours a retune
+    without a restart.
+    """
+    return int(os.environ.get("BLAME_ORACLE_TIMEOUT", "120"))
+
 
 Status = Literal["pass", "fail", "absent", "unbuildable", "timeout"]
 
@@ -57,8 +65,13 @@ class Outcome:
         return {"pass": 0, "fail": 1}.get(self.status, _SKIP)
 
 
-def run(worktree: Worktree, ref: str, timeout: int = ORACLE_TIMEOUT) -> Outcome:
-    """Check out `ref` in `worktree`, prepare it if needed, run the test once."""
+def run(worktree: Worktree, ref: str, timeout: int | None = None) -> Outcome:
+    """Check out `ref` in `worktree`, prepare it if needed, run the test once.
+
+    `timeout` defaults to `oracle_timeout()` at call time.
+    """
+    if timeout is None:
+        timeout = oracle_timeout()
     command = current().test
     sha = worktree.checkout(ref)
     started = time.monotonic()

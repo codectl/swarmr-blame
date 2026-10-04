@@ -60,6 +60,44 @@ def test_timeout_when_the_command_outlives_the_limit(repo_factory) -> None:
     assert "1s" in out.tail
 
 
+_SETUP_THAT_VENDORS_A_LOCKFILE = (
+    "from pathlib import Path\n"
+    "Path('node_modules/dep').mkdir(parents=True, exist_ok=True)\n"
+    "Path('node_modules/dep/package-lock.json').write_text('{}')\n"
+    "Path('setup.log').open('a').write('ran\\n')\n"
+)
+
+
+def test_setup_runs_once_per_tracked_lockfile_state(repo_factory) -> None:
+    """A lockfile a setup command vendors into the tree never re-triggers setup;
+    a tracked lockfile changing between refs does."""
+    import shlex
+    import sys
+
+    repo_factory(
+        [
+            (
+                "add calc",
+                {
+                    **project(),
+                    "deps.py": _SETUP_THAT_VENDORS_A_LOCKFILE,
+                    "uv.lock": "v1\n",
+                },
+            ),
+            ("bump dep", {"uv.lock": "v2\n"}),
+        ],
+        setup=f"{shlex.quote(sys.executable)} deps.py",
+    )
+    shas = _shas()
+    with Worktree.create("or-setup") as wt:
+        oracle.run(wt, shas[0])
+        oracle.run(wt, shas[0])
+        assert (wt.path / "setup.log").read_text() == "ran\n"
+        assert (wt.path / "node_modules/dep/package-lock.json").exists()
+        oracle.run(wt, shas[1])
+        assert (wt.path / "setup.log").read_text() == "ran\nran\n"
+
+
 def test_unbuildable_when_the_command_is_not_on_path(
     repo_factory,
 ) -> None:

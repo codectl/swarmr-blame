@@ -70,10 +70,9 @@ def _subagents(
             "description": (
                 "Establishes whether the test fails at HEAD and finds a passing "
                 "lower bound by walking back through history with the real test as "
-                "the oracle; later, confirms that a bound and a first-bad commit "
-                "behave consistently under interleaved reruns in one environment. "
-                "Use first, with the test id, and again after bisect to rule out "
-                "flakiness."
+                "the oracle, rerunning both ends interleaved so a flaky test is "
+                "named before anyone bisects it. Use exactly once, first, with the "
+                "symptom only; the critic reruns the first-bad pair itself."
             ),
             "system_prompt": prompts.flake(facts, mechanics),
             "middleware": [AnnounceName("flake", attribution)],

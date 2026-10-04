@@ -21,10 +21,19 @@ decided in `target.py`.
 
 from __future__ import annotations
 
+import re
 import shlex
 from dataclasses import dataclass
 
 __all__ = ["Command"]
+
+_FILE_SUFFIX = re.compile(
+    r"\.(py|pyi|go|rs|js|mjs|cjs|jsx|ts|mts|cts|tsx|rb|java|kt|kts|scala|cs|fs|"
+    r"php|c|cc|cpp|cxx|h|hh|hpp|m|mm|swift|dart|zig|nim|hs|ml|ex|exs|erl|clj|"
+    r"cljs|lua|pl|pm|sh|bash|zsh|ps1|sql|hcl|tf|tfvars|toml|yaml|yml|json|"
+    r"xml|feature|txt|md|rst|cfg|ini|mk|make|cmake|nix|el|vim|bats|t)$",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,17 +59,23 @@ class Command:
         both name a file the test lives in; when that file is not at a ref the
         test is absent there, not failing. Only the part before `::` or after
         `=` is a path, and only relative ones count.
+
+        A dotted word on its own is a path only with a `/` in it or a source
+        file suffix: `pytest -k foo.bar` names a test expression and
+        `go test ./pkg/...` a package pattern; see `_FILE_SUFFIX`.
         """
         found: list[str] = []
         for arg in self.argv[1:]:
             value = arg.split("=", 1)[1] if "=" in arg and arg.startswith("-") else arg
             value = value.split("::", 1)[0]
             if (
-                value
-                and not value.startswith(("-", "/"))
-                and ("." in value or "/" in value)
-                and not any(c in value for c in "*?[")
-                and value.strip("./") not in ("", "...")
+                not value
+                or value.startswith(("-", "/"))
+                or "..." in value
+                or any(c in value for c in "*?[")
+                or value.strip("./") == ""
             ):
+                continue
+            if "/" in value or _FILE_SUFFIX.search(value):
                 found.append(value.removeprefix("./"))
         return tuple(found)

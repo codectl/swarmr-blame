@@ -70,6 +70,10 @@ _current: ContextVar[Target | None] = ContextVar("swarmr_blame_target", default=
 
 def _checkout(raw: str) -> Path:
     """`raw` as the root of a git work tree, or a `RepoError` naming the remedy."""
+    if not raw.strip():
+        # `Path("")` is the process's cwd, which may well be a checkout root;
+        # a missing target must never become whatever the server runs in.
+        raise RepoError("`repo` is empty. Pass the checkout to investigate as `repo`.")
     path = Path(raw).expanduser().resolve()
     if not path.is_dir():
         raise RepoError(f"repo={raw!r} is not a directory.")

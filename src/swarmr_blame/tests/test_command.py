@@ -25,6 +25,12 @@ def test_parse_splits_like_a_shell_without_being_one() -> None:
         ("python3 /usr/bin/check.py", ()),
         ("go test ./... -run TestCheckout", ()),
         ("pytest tests/test_*.py", ()),
+        ("go test ./pkg/... -run TestX", ()),
+        ("pytest -k foo.bar tests/test_x.py", ("tests/test_x.py",)),
+        ("pytest -k foo.bar", ()),
+        ("python3 check.py", ("check.py",)),
+        ("pytest -q check.py", ("check.py",)),
+        ("npm test -- --grep v1.2", ()),
         ("make check", ()),
     ],
 )

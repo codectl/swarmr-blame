@@ -31,7 +31,7 @@ Importing this module must stay cheap: it is what `teams --list` and the MCP ser
 
 **Per-call arguments** (`target.PARAMS`, declared on the `Team` as `params`, exposed by core as tool arguments and `--flags`): `repo` (required; checkout root), `test` (required; exit 0 = pass), `setup` (optional; once per worktree and after every lockfile change). **Nothing about the target comes from the environment.** A process serving several MCP callers cannot have one repository, and an investigation reported against the wrong checkout is worse than one that refuses to start.
 
-**Environment (tuning only):** `BLAME_PASS_ENV` (comma-separated variables passed through to the commands), `BLAME_ORACLE_TIMEOUT` (per test run, default 120), `BLAME_INSTALL_TIMEOUT` (per setup run, default 300), `BLAME_CACHE_TTL` (history read memo, default 300). Model credentials come from `swarmr` (`KIMI_*`).
+**Environment (tuning only):** `BLAME_PASS_ENV` (comma-separated variables passed through to the commands), `BLAME_ORACLE_TIMEOUT` (per test run, default 120), `BLAME_INSTALL_TIMEOUT` (per setup run, default 300), `BLAME_CACHE_TTL` (history read memo, default 300). All four are read at call time (`oracle.oracle_timeout()`, `sandbox.install_timeout()`, `output.cache_ttl()`), so a long-lived server honours a retune without a restart. Model credentials come from `swarmr` (`KIMI_*`).
 
 ## Architecture
 
@@ -42,10 +42,10 @@ Importing this module must stay cheap: it is what `teams --list` and the MCP ser
 `agent.py` — `build(run)` and `profile_target(run)`. Both begin with `target.activate(run.params)`. Stock Deep Agents: one `create_deep_agent` commander plus five `SubAgent` specialists reached through the built-in `task` tool. Holds the filesystem permission rule sets.
 
 **Target**\
-`target.py` — `PARAMS`, `Target(repo, test, setup)`, `activate(params)` (validates the checkout is a repository root, parses the commands, sets the ContextVar), `current()` (`TargetError(TeamError)` outside a run). `repo.py` — `target()` is `current().repo`, `git()` (argv only, pinned colour/pager/locale), `resolve(ref)`. `RepoError` subclasses `swarmr`'s `TeamError`.
+`target.py` — `PARAMS`, `Target(repo, test, setup)`, `activate(params)` (rejects an empty `repo` before building a path — `Path("")` is the server's cwd — validates the checkout is a repository root, parses the commands, sets the ContextVar), `current()` (`TargetError(TeamError)` outside a run). `repo.py` — `target()` is `current().repo`, `git()` (argv only, pinned colour/pager/locale/`core.quotepath=false` so non-ASCII paths are never C-quoted on diff headers), `resolve(ref)`. `RepoError` subclasses `swarmr`'s `TeamError`.
 
 **Commands**\
-`command.py` — `Command(text, argv)` with `.paths`, the arguments that look like repository-relative files, used for `absent` detection. `shlex` split, never a shell. This is the whole language interface of the team: it does not know what a test is, the operator does.
+`command.py` — `Command(text, argv)` with `.paths`, the arguments that look like repository-relative files, used for `absent` detection: a `/` or a source-file suffix (`_FILE_SUFFIX`) qualifies, `...` package patterns and bare expressions like `-k foo.bar` do not — a false path makes every ref `absent` and the run `unrunnable`. `shlex` split, never a shell. This is the whole language interface of the team: it does not know what a test is, the operator does.
 
 **Jail**\
 `sandbox.py` — `Worktree` (create, `checkout`, `prepare()`), `lease(name)` (one persistent worktree per *(repository, tool)* under `scratch/worktrees/<repo-hash>/<name>`, removed at exit), `scrubbed_env()`, `SetupError`. `_TOOLCHAIN_ROOTS` is a table of *variable → path under the real HOME*, passed through only when that path exists; a new toolchain is a new row, never a function. `_SCRATCH_CACHES` gives package caches a per-process fallback so a dependency downloads once per run.
@@ -69,7 +69,7 @@ Importing this module must stay cheap: it is what `teams --list` and the MCP ser
 `tools.py` — `run_oracle` plus `FLAKE_TOOLS`, `BISECT_TOOLS`, `DEPS_TOOLS`, `BLAME_TOOLS`, `CRITIC_TOOLS`.
 
 **Result shaping**\
-`output.py` — `emit` (byte cap at `MAX_BYTES = 12_000`), `guard` (exception containment), `cached` (TTL memoisation; oracle tools never wear it). `digest.py` — `digest_result`, `is_tool_error`, dispatching on each payload's `kind`; the two fields `core` may call before a run.
+`output.py` — `emit` (byte cap at `MAX_BYTES = 12_000`), `guard` (exception containment), `cached` (TTL memoisation keyed by the active repository as well as the call, expired entries swept on every miss; oracle tools never wear it). `digest.py` — `digest_result`, `is_tool_error`, dispatching on each payload's `kind`; the two fields `core` may call before a run.
 
 **Report**\
 `report_tool.py` — `file_forensics_report` tool, `render_report_args`, `commit_author`, `render_hunk`. `redaction.py` — `diagnosis`, `one_line`, `OMITTED_NOTE`, `LOCATION_CAVEAT`.
@@ -136,7 +136,7 @@ Unlike the Kubernetes team, round one is **one** investigator: nothing else can 
 
 **Searches are one call.** `walk_back`, `bisect` and `compare_refs` each run the oracle many times internally. The model never drives a search step-by-step with `run_oracle`: it is slower, it mislabels steps, and `git bisect` state would be left behind on a crash.
 
-**Setup runs per worktree, and again only when a lockfile hash changes.** A bisect across a dependency bump prepares once per side; a bisect that does not cross one never prepares again. With no setup command the checkout is used as committed. With no lockfile the facts say a dependency drift cannot be excluded.
+**Setup runs per worktree, and again only when a lockfile hash changes.** The hash covers *tracked* lockfiles only (`git ls-files` in the worktree): a vendored lockfile under `node_modules/` cannot differ between refs, and hashing it made the key differ before and after the first setup. A bisect across a dependency bump prepares once per side; a bisect that does not cross one never prepares again. With no setup command the checkout is used as committed. With no lockfile the facts say a dependency drift cannot be excluded.
 
 **`scrubbed_env()` passes through PATH, locale, temp, `BLAME_PASS_ENV`, and existing toolchain roots.** HOME points into scratch, so credentials under the real `$HOME` are invisible to the test unless the operator passes their location through.
 
