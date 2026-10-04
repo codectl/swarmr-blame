@@ -144,7 +144,7 @@ def compare(
     good: str,
     bad: str,
     runs: int = 2,
-    timeout: int = oracle.ORACLE_TIMEOUT,
+    timeout: int | None = None,
 ) -> Comparison:
     """Run the test `runs` times at each ref, interleaved, in one worktree."""
     runs = max(1, min(int(runs), MAX_RUNS))

@@ -21,7 +21,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-__all__ = ["LOCATION_CAVEAT", "OMITTED_NOTE", "diagnosis", "locator", "one_line"]
+__all__ = ["LOCATION_CAVEAT", "OMITTED_NOTE", "diagnosis", "one_line"]
 
 # Printed by the template, never by the model.
 LOCATION_CAVEAT = (
@@ -36,12 +36,6 @@ OMITTED_NOTE = (
     "against commits that exist. The observed change is in HUNK and EVIDENCE."
 )
 
-_PRESCRIPTIVE = re.compile(
-    r"\b(replace|rename|change|set|edit|update|correct|fix|remove|delete|add|"
-    r"revert|cherry.?pick|rebase|apply|patch|should|must|instead|will)\b",
-    re.IGNORECASE,
-)
-
 _COUNTERFACTUAL = re.compile(
     r"\b(?:instead of|rather than|should (?:be|read|have|return|use)|expected|"
     r"(?:typo|misspelling|misspelt|misspelled|shorthand)\s+(?:for|of)|"
@@ -54,21 +48,10 @@ _SENTENCE = re.compile(r"(?<=[.;])\s+")
 def one_line(value: Any, limit: int = 120) -> str:
     """Collapse to a single clipped line: a locator, with no room for a recipe.
 
-    Public because the report renders the first-bad sha and the author with it,
-    and neither is subject to the prescription check.
+    Public because the report renders the first-bad sha and the author with it.
     """
     text = " ".join(str(value or "").split())
     return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
-
-
-def locator(value: Any) -> str:
-    """One line naming where the fault is, or "" when it prescribes a fix instead.
-
-    Dropped whole rather than clipped: a prescription with its verb removed is
-    still a prescription, and the commit it points at is reported separately.
-    """
-    text = one_line(value)
-    return "" if text and _PRESCRIPTIVE.search(text) else text
 
 
 def diagnosis(cause: str) -> tuple[str, bool]:

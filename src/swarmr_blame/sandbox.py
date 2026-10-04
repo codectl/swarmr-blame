@@ -41,15 +41,23 @@ from swarmr_blame.repo import git, resolve
 from swarmr_blame.target import current
 
 __all__ = [
-    "INSTALL_TIMEOUT",
     "SetupError",
     "Worktree",
+    "install_timeout",
     "lease",
     "scratch_root",
     "scrubbed_env",
 ]
 
-INSTALL_TIMEOUT = int(os.environ.get("BLAME_INSTALL_TIMEOUT", "300"))
+
+def install_timeout() -> int:
+    """Seconds one setup run may take; BLAME_INSTALL_TIMEOUT, default 300.
+
+    Read per call, not at import, so a long-lived server honours a retune
+    without a restart.
+    """
+    return int(os.environ.get("BLAME_INSTALL_TIMEOUT", "300"))
+
 
 _MARK = ".swarmr-blame-setup"
 
@@ -111,7 +119,9 @@ def scrubbed_env(worktree: Path) -> dict[str, str]:
     """
     keep = ["PATH", "LANG", "TZ", "TMPDIR", "SYSTEMROOT", "TEMP", "TMP"]
     keep += list(_TOOLCHAIN_ROOTS)
-    keep += [k for k in os.environ.get("BLAME_PASS_ENV", "").split(",") if k]
+    keep += [
+        k.strip() for k in os.environ.get("BLAME_PASS_ENV", "").split(",") if k.strip()
+    ]
     env = {key: os.environ[key] for key in keep if key in os.environ}
     real_home = Path(os.environ.get("HOME", "~")).expanduser()
     for var, relative in _TOOLCHAIN_ROOTS.items():
@@ -141,13 +151,19 @@ def scrubbed_env(worktree: Path) -> dict[str, str]:
 
 
 def _setup_key(worktree: Path) -> str:
-    """What, when it changes, means setup must run again: every lockfile's bytes."""
+    """What, when it changes, means setup must run again: every lockfile's bytes.
+
+    Tracked lockfiles only, listed by git rather than by walking the tree: after
+    `npm ci` or `uv sync` the worktree holds a dependency tree full of vendored
+    lockfiles, which would both slow the walk and change the key between the
+    run before setup and the run after, forcing one spurious setup. An
+    untracked lockfile cannot differ between refs, so it never decides.
+    """
     digest = hashlib.sha256()
-    for path in sorted(p for p in worktree.rglob("*") if p.name in LOCKFILE_NAMES):
-        if ".git" in path.parts or any(part.startswith(".") for part in path.parts[:-1]):
-            continue
-        digest.update(str(path.relative_to(worktree)).encode())
-        digest.update(path.read_bytes())
+    listed = git(["ls-files", "-z"], cwd=worktree).split("\0")
+    for name in sorted(p for p in listed if p and Path(p).name in LOCKFILE_NAMES):
+        digest.update(name.encode())
+        digest.update((worktree / name).read_bytes())
     return digest.hexdigest()
 
 
@@ -223,6 +239,7 @@ class Worktree:
 
 
 def _run_setup(worktree: Path, setup: Command) -> None:
+    timeout = install_timeout()
     try:
         done = subprocess.run(
             setup.argv,
@@ -230,14 +247,14 @@ def _run_setup(worktree: Path, setup: Command) -> None:
             env=scrubbed_env(worktree),
             capture_output=True,
             text=True,
-            timeout=INSTALL_TIMEOUT,
+            timeout=timeout,
             check=False,
         )
     except FileNotFoundError as exc:
         raise SetupError(f"setup: `{setup.argv[0]}` is not on PATH.") from exc
     except subprocess.TimeoutExpired as exc:
         raise SetupError(
-            f"setup `{setup.text}` exceeded {INSTALL_TIMEOUT}s (BLAME_INSTALL_TIMEOUT)"
+            f"setup `{setup.text}` exceeded {timeout}s (BLAME_INSTALL_TIMEOUT)"
         ) from exc
     if done.returncode != 0:
         tail = (done.stderr or done.stdout).strip().splitlines()[-15:]

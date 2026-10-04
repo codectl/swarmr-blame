@@ -200,10 +200,10 @@ pinned moved, so nothing pinned explains the red. Do not speculate about
 dependencies no tool showed you.
 
 A lockfile move inside the range is a candidate, not a cause. It becomes the
-cause only when one of these holds, and you must say which:
-  * the commit that moved the lockfile IS the first-bad commit; or
-  * the oracle agrees — the flake investigator's confirmation shows the test
-    turns red exactly where the pin changed.
+cause only when the commit that moved the lockfile IS the first-bad commit,
+once bisect has named one; you hold no oracle, so you cannot promote it
+yourself. Report every move as a candidate with its sha, and leave the ruling
+to the commander and the critic, who reruns the first-bad sha and its parent.
 A pin that moved three commits before the boundary explains nothing.
 
 The strongest shape in your domain: the first-bad commit changes the lockfile
