@@ -71,4 +71,6 @@ There is no network isolation: a test that reaches the network can. Running the
 team inside a container is the stronger boundary; this package does not provide
 one. The report names a location, never a fix.
 
-Design notes and internals: [CLAUDE.md](CLAUDE.md).
+## References
+
+- [Architecture overview](./CLAUDE.md)
